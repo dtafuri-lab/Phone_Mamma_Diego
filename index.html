@@ -2,16 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Mammina Mobile Sound Archive</title>
+  <title>Mammina Camera Distortion</title>
   <style>
-    body { margin:0; background:#071827; color:#cfe9ff; font-family:sans-serif; text-align:center; }
-    h1 { padding:20px; font-size:28px; }
-    #controls { display:flex; flex-direction:column; align-items:center; gap:18px; padding:20px; }
-    button { padding:22px 32px; font-size:22px; background:#2aa1c3; color:#071827; border:none; border-radius:18px; width:90%; max-width:380px; }
-    video { margin-top:16px; max-width:92%; border:3px solid #2aa1c3; border-radius:16px; display:none; }
-    #mobilePad { position:fixed; bottom:0; left:0; right:0; display:flex; justify-content:space-around; background:#0f2a3b; padding:20px; z-index:10; }
-    .soundBtn { flex:1; margin:0 8px; padding:30px; font-size:24px; font-weight:bold; background:#2aa1c3; color:#071827; border:none; border-radius:20px; }
-    #rippleCanvas, #explosionCanvas { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:5; }
+    body { margin:0; background:#071827; color:#cfe9ff; text-align:center; }
+    h1 { padding:20px; font-size:26px; }
+    #controls { padding:20px; }
+    button { padding:18px 28px; font-size:20px; margin:8px; background:#2aa1c3; color:#071827; border:none; border-radius:14px; }
+    #cameraCanvas { width:100%; max-width:500px; border:3px solid #2aa1c3; border-radius:12px; }
   </style>
 </head>
 <body>
@@ -20,53 +17,65 @@
     <button id="cameraBtn">Open Camera</button>
     <button id="switchCameraBtn">Switch Camera</button>
     <button id="closeCameraBtn" style="display:none;">Close Camera</button>
-    <video id="cameraFeed" autoplay muted playsinline></video>
-    <button id="recordBtn">Record</button>
-    <button id="stopRecordBtn">Stop & Download</button>
   </div>
-  <canvas id="rippleCanvas"></canvas>
-  <canvas id="explosionCanvas"></canvas>
-  <div id="mobilePad">
-    <button class="soundBtn" data-sound="kick">Kick</button>
-    <button class="soundBtn" data-sound="snare">Snare</button>
-    <button class="soundBtn" data-sound="hihat">HiHat</button>
-  </div>
+  <video id="cameraFeed" autoplay playsinline muted style="display:none;"></video>
+  <canvas id="cameraCanvas"></canvas>
+
 <script>
-const audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-const masterGain = audioCtx.createGain();
-masterGain.connect(audioCtx.destination);
-const recorderDest = audioCtx.createMediaStreamDestination();
-masterGain.connect(recorderDest);
+let cameraStream, usingFrontCamera = true;
+const cameraFeed = document.getElementById("cameraFeed");
+const cameraCanvas = document.getElementById("cameraCanvas");
+const ctx = cameraCanvas.getContext("2d");
 
-function playKick(){const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type="sine";o.frequency.setValueAtTime(150,audioCtx.currentTime);o.frequency.exponentialRampToValueAtTime(50,audioCtx.currentTime+0.5);g.gain.setValueAtTime(0.35,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.5);o.connect(g).connect(masterGain);o.start();o.stop(audioCtx.currentTime+0.5);}
-function playSnare(){const b=audioCtx.createBuffer(1,audioCtx.sampleRate*0.2,audioCtx.sampleRate);const d=b.getChannelData(0);for(let i=0;i<d.length;i++){d[i]=Math.random()*2-1;}const n=audioCtx.createBufferSource();n.buffer=b;const g=audioCtx.createGain();g.gain.setValueAtTime(0.3,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+0.2);n.connect(g).connect(masterGain);n.start();n.stop(audioCtx.currentTime+0.2);}
-function playHiHat(){const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type="square";o.frequency.value=8000;g.gain.setValueAtTime(0.15,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+0.06);o.connect(g).connect(masterGain);o.start();o.stop(audioCtx.currentTime+0.06);}
+async function startCamera() {
+  const constraints = { video: { facingMode: usingFrontCamera ? "user" : "environment" } };
+  cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+  cameraFeed.srcObject = cameraStream;
+  await cameraFeed.play();
+  cameraCanvas.width = cameraFeed.videoWidth;
+  cameraCanvas.height = cameraFeed.videoHeight;
+  animateDistortion();
+  document.getElementById("closeCameraBtn").style.display = "inline-block";
+}
 
-const rippleCanvas=document.getElementById("rippleCanvas"),rippleCtx=rippleCanvas.getContext("2d");
-const explosionCanvas=document.getElementById("explosionCanvas"),explosionCtx=explosionCanvas.getContext("2d");
-function resize(){rippleCanvas.width=window.innerWidth;rippleCanvas.height=window.innerHeight;explosionCanvas.width=window.innerWidth;explosionCanvas.height=window.innerHeight;}
-window.addEventListener("resize",resize);resize();
+function animateDistortion() {
+  const w = cameraCanvas.width, h = cameraCanvas.height;
+  ctx.clearRect(0,0,w,h);
+  ctx.drawImage(cameraFeed,0,0,w,h);
+  let frame = ctx.getImageData(0,0,w,h);
+  let data = frame.data;
+  const time = Date.now()/300;
+  // Simple horizontal ripple distortion
+  for(let y=0;y<h;y++){
+    const offset = Math.floor(10*Math.sin(y/30 + time));
+    for(let x=w-1;x>=0;x--){
+      const i = (y*w + x)*4;
+      const j = (y*w + ((x+offset+w)%w))*4;
+      data[i]=data[j]; data[i+1]=data[j+1]; data[i+2]=data[j+2];
+    }
+  }
+  ctx.putImageData(frame,0,0);
+  requestAnimationFrame(animateDistortion);
+}
 
-function triggerRipple(x,y){let radius=0;function step(){rippleCtx.clearRect(0,0,rippleCanvas.width,rippleCanvas.height);rippleCtx.strokeStyle="rgba(138,212,232,0.8)";rippleCtx.lineWidth=4;rippleCtx.beginPath();rippleCtx.arc(x,y,radius,0,Math.PI*2);rippleCtx.stroke();radius+=12;if(radius<200){requestAnimationFrame(step);}else{rippleCtx.clearRect(0,0,rippleCanvas.width,rippleCanvas.height);}}step();}
-
-function triggerExplosion(){let particles=[];for(let i=0;i<100;i++){particles.push({x:explosionCanvas.width/2,y:explosionCanvas.height/2,vx:(Math.random()-0.5)*10,vy:(Math.random()-0.5)*10,color:`hsl(${Math.random()*360},80%,60%)`,life:50});}
-function animate(){explosionCtx.clearRect(0,0,explosionCanvas.width,explosionCanvas.height);particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.life--;explosionCtx.fillStyle=p.color;explosionCtx.fillRect(p.x,p.y,6,6);});particles=particles.filter(p=>p.life>0);if(particles.length>0)requestAnimationFrame(animate);}animate();}
-
-document.querySelectorAll(".soundBtn").forEach(btn=>{btn.addEventListener("click",e=>{if(audioCtx.state==="suspended")audioCtx.resume();const s=btn.dataset.sound;if(s==="kick")playKick();if(s==="snare")playSnare();if(s==="hihat")playHiHat();const rect=btn.getBoundingClientRect();triggerRipple(rect.left+rect.width/2,rect.top+rect.height/2);triggerExplosion();});});
-
-let cameraStream;let usingFrontCamera=true;
-const cameraFeed=document.getElementById("cameraFeed"),cameraBtn=document.getElementById("cameraBtn"),switchCameraBtn=document.getElementById("switchCameraBtn"),closeCameraBtn=document.getElementById("closeCameraBtn");
-async function startCamera(){const constraints={video:{facingMode:usingFrontCamera?"user":"environment"}};cameraStream=await navigator.mediaDevices.getUserMedia(constraints);cameraFeed.srcObject=cameraStream;await cameraFeed.play();cameraFeed.style.display="block";closeCameraBtn.style.display="inline-block";}
-cameraBtn.addEventListener("click",async()=>{if(audioCtx.state==="suspended")await audioCtx.resume();await startCamera();});
-switchCameraBtn.addEventListener("click",async()=>{if(cameraStream)cameraStream.getTracks().forEach(t=>t.stop());usingFrontCamera=!usingFrontCamera;await startCamera();});
-closeCameraBtn.addEventListener("click",()=>{if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraFeed.srcObject=null;cameraFeed.style.display="none";closeCameraBtn.style.display="none";}});
-
-let recorder,chunks=[];
-document.getElementById("recordBtn").addEventListener("click",async()=>{if(audioCtx.state==="suspended")await audioCtx.resume();chunks=[];recorder=new MediaRecorder(recorderDest.stream,{mimeType:"video/webm"});recorder.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data);};recorder.onstop=()=>{const blob=new Blob(chunks,{type:"video/webm"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="mammina_recording.mp4";a.click();URL.revokeObjectURL(url);};recorder.start();});
-document.getElementById("stopRecordBtn").addEventListener("click",()=>{if(recorder&&recorder.state!=="inactive")recorder.stop();});
+document.getElementById("cameraBtn").addEventListener("click", startCamera);
+document.getElementById("switchCameraBtn").addEventListener("click", async ()=>{
+  if(cameraStream) cameraStream.getTracks().forEach(t=>t.stop());
+  usingFrontCamera=!usingFrontCamera;
+  await startCamera();
+});
+document.getElementById("closeCameraBtn").addEventListener("click", ()=>{
+  if(cameraStream){
+    cameraStream.getTracks().forEach(t=>t.stop());
+    cameraFeed.srcObject=null;
+    ctx.clearRect(0,0,cameraCanvas.width,cameraCanvas.height);
+    document.getElementById("closeCameraBtn").style.display="none";
+  }
+});
 </script>
 </body>
 </html>
+
 
 
 
