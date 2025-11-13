@@ -13,35 +13,35 @@
     }
     h1 {
       padding: 20px;
-      font-size: 24px;
+      font-size: 26px;
     }
     #controls {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 12px;
+      gap: 14px;
       padding: 20px;
     }
     button {
-      padding: 14px 24px;
-      font-size: 18px;
+      padding: 18px 28px;
+      font-size: 20px;
       background: #2aa1c3;
       color: #071827;
       border: none;
-      border-radius: 12px;
+      border-radius: 14px;
       cursor: pointer;
       transition: all 0.2s ease;
-      width: 80%;
-      max-width: 300px;
+      width: 90%;
+      max-width: 340px;
     }
     button:hover {
       background: #88d2e8;
     }
     video {
-      margin-top: 12px;
+      margin-top: 16px;
       max-width: 90%;
       border: 3px solid #2aa1c3;
-      border-radius: 12px;
+      border-radius: 14px;
       display: none;
     }
     #mobilePad {
@@ -52,19 +52,19 @@
       display: flex;
       justify-content: space-around;
       background: #0f2a3b;
-      padding: 14px;
+      padding: 18px;
       z-index: 999;
     }
     .soundBtn {
       flex: 1;
-      margin: 0 6px;
-      padding: 22px;
-      font-size: 20px;
+      margin: 0 8px;
+      padding: 26px;
+      font-size: 22px;
       font-weight: bold;
       background: #2aa1c3;
       color: #071827;
       border: none;
-      border-radius: 16px;
+      border-radius: 18px;
       cursor: pointer;
       transition: all 0.2s ease;
     }
@@ -76,7 +76,7 @@
       #mobilePad { display: none; }
     }
     #rippleCanvas, #explosionCanvas {
-      position: absolute;
+      position: fixed;
       top: 0; left: 0;
       width: 100vw; height: 100vh;
       pointer-events: none;
@@ -261,14 +261,15 @@ document.getElementById("recordBtn").addEventListener("click", () => {
   const dest = audioCtx.createMediaStreamDestination();
   const source = audioCtx.createGain();
   source.connect(dest);
+  source.connect(audioCtx.destination);
   recorder = new MediaRecorder(dest.stream);
   recorder.ondataavailable = e => chunks.push(e.data);
   recorder.onstop = () => {
-    const blob = new Blob(chunks, { type: "audio/webm" });
+    const blob = new Blob(chunks, { type: "video/mp4" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "mammina_recording.webm";
+    a.download = "mammina_recording.mp4";
     a.click();
     chunks = [];
   };
@@ -283,4 +284,5 @@ document.getElementById("stopRecordBtn").addEventListener("click", () => {
 </script>
 </body>
 </html>
+
 
