@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Smile Trigger Sound</title>
+  <title>Mammina Mobile Sound Archive</title>
   <script defer src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
   <style>
     body {
@@ -24,8 +24,8 @@
       border-radius: 12px;
     }
     button {
-      margin: 20px;
-      padding: 14px 28px;
+      margin: 12px;
+      padding: 16px 28px;
       font-size: 18px;
       background: #2aa1c3;
       color: #071827;
@@ -42,57 +42,172 @@
       top: 0;
       left: 0;
     }
+    #stemPanel {
+      display: flex;
+      justify-content: space-around;
+      padding: 10px;
+      background: #0f2a3b;
+    }
+    .stemControl {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .stemControl label {
+      margin-bottom: 6px;
+      font-size: 12px;
+    }
+    #stemPanel input[type=range] {
+      writing-mode: bt-lr;
+      -webkit-appearance: slider-vertical;
+      width: 20px;
+      height: 120px;
+    }
+    #mobilePad {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: space-around;
+      background: #0f2a3b;
+      padding: 14px;
+      z-index: 999;
+    }
+    .soundBtn {
+      flex: 1;
+      margin: 0 6px;
+      padding: 22px;
+      font-size: 20px;
+      font-weight: bold;
+      background: #2aa1c3;
+      color: #071827;
+      border: none;
+      border-radius: 16px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .soundBtn:active {
+      background: #88d2e8;
+      transform: scale(1.1);
+    }
+    @media (min-width: 768px) {
+      #mobilePad { display: none; }
+    }
   </style>
 </head>
 <body>
-  <h1>Smile to Trigger Sound</h1>
+  <h1>Mammina Mobile Sound Archive</h1>
   <button id="startBtn">Start Camera</button>
   <video id="video" autoplay muted playsinline></video>
 
-  <script>
-    const video = document.getElementById('video');
-    const startBtn = document.getElementById('startBtn');
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  <!-- Stem Player -->
+  <div id="stemPanel">
+    <div class="stemControl"><label>Bass</label><input type="range" id="stem1" min="0" max="1" step="0.01" value="0.25"></div>
+    <div class="stemControl"><label>Synth</label><input type="range" id="stem2" min="0" max="1" step="0.01" value="0.25"></div>
+    <div class="stemControl"><label>Pad</label><input type="range" id="stem3" min="0" max="1" step="0.01" value="0.25"></div>
+    <div class="stemControl"><label>Voice</label><input type="range" id="stem4" min="0" max="1" step="0.01" value="0.25"></div>
+  </div>
 
-    async function playSmileSound() {
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = "triangle";
-      osc.frequency.value = 440;
-      gain.gain.value = 0.2;
-      osc.connect(gain).connect(audioCtx.destination);
-      osc.start();
-      osc.stop(audioCtx.currentTime + 0.3);
-    }
+  <!-- Mobile Sound Pad -->
+  <div id="mobilePad">
+    <button class="soundBtn" data-sound="kick">Kick</button>
+    <button class="soundBtn" data-sound="snare">Snare</button>
+    <button class="soundBtn" data-sound="hihat">HiHat</button>
+  </div>
 
-    async function startCamera() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "user" }, audio: false
-        });
-        video.srcObject = stream;
-        video.setAttribute("playsinline", true);
-        video.setAttribute("autoplay", true);
-        video.setAttribute("muted", true);
-        await video.play();
-        return stream;
-      } catch (err) {
-        alert("Camera access failed: " + err.message);
-      }
-    }
+<script>
+const video = document.getElementById('video');
+const startBtn = document.getElementById('startBtn');
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-    startBtn.addEventListener('click', async () => {
-      await Promise.all([
-        faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js/models'),
-        faceapi.nets.faceExpressionNet.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js/models')
-      ]);
+// Simple drum sounds
+function playKick(){const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();
+  osc.type="sine"; osc.frequency.setValueAtTime(150,audioCtx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(50,audioCtx.currentTime+0.5);
+  gain.gain.setValueAtTime(0.25,audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.5);
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(); osc.stop(audioCtx.currentTime+0.5);}
+function playSnare(){const buffer=audioCtx.createBuffer(1,audioCtx.sampleRate*0.2,audioCtx.sampleRate);
+  const data=buffer.getChannelData(0); for(let i=0;i<data.length;i++){data[i]=Math.random()*2-1;}
+  const noise=audioCtx.createBufferSource(); noise.buffer=buffer;
+  const gain=audioCtx.createGain(); gain.gain.setValueAtTime(0.2,audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+0.2);
+  noise.connect(gain).connect(audioCtx.destination);
+  noise.start(); noise.stop(audioCtx.currentTime+0.2);}
+function playHiHat(){const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();
+  osc.type="square"; osc.frequency.value=8000;
+  gain.gain.setValueAtTime(0.1,audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+0.05);
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(); osc.stop(audioCtx.currentTime+0.05);}
 
-      const stream = await startCamera();
-      if (!stream) return;
+// Attach to mobile buttons
+document.querySelectorAll(".soundBtn").forEach(btn=>{
+  btn.addEventListener("touchstart",()=>{
+    if(audioCtx.state==="suspended") audioCtx.resume();
+    if(btn.dataset.sound==="kick") playKick();
+    if(btn.dataset.sound==="snare") playSnare();
+    if(btn.dataset.sound==="hihat") playHiHat();
+  });
+});
 
-      video.addEventListener('loadeddata', () => {
-        const canvas = faceapi.createCanvasFromMedia(video);
-        document.body.append(canvas);
+// Stem player
+const stems=[
+  {type:"sine",freq:220,slider:document.getElementById("stem1")},
+  {type:"square",freq:330,slider:document.getElementById("stem2")},
+  {type:"sawtooth",freq:440,slider:document.getElementById("stem3")},
+  {type:"triangle",freq:550,slider:document.getElementById("stem4")}
+];
+stems.forEach(s=>{
+  s.osc=audioCtx.createOscillator(); s.gain=audioCtx.createGain();
+  s.osc.type=s.type; s.osc.frequency.value=s.freq;
+  s.gain.gain.value=parseFloat(s.slider.value)*0.4;
+  s.osc.connect(s.gain).connect(audioCtx.destination);
+  s.osc.start();
+  s.slider.addEventListener("input",e=>{
+    s.gain.gain.value=parseFloat(e.target.value)*0.4;
+  });
+});
+
+// Smile detection
+async function playSmileSound() {
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = "triangle";
+  osc.frequency.value = 440;
+  gain.gain.value = 0.2;
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.3);
+}
+
+async function startCamera() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "user" }, audio: false
+    });
+    video.srcObject = stream;
+    await video.play();
+    return stream;
+  } catch (err) {
+    alert("Camera access failed: " + err.message);
+  }
+}
+
+startBtn.addEventListener('click', async () => {
+  await Promise.all([
+    faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js/models'),
+    faceapi.nets.faceExpressionNet.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js/models')
+  ]);
+
+  const stream = await startCamera();
+  if (!stream) return;
+
+  video.addEventListener('loadeddata', () => {
+    const canvas = faceapi.createCanvasFromMedia(video);
+    document.body.append(canvas);
         const displaySize = { width: video.videoWidth, height: video.videoHeight };
         faceapi.matchDimensions(canvas, displaySize);
 
@@ -110,9 +225,9 @@
           if (detections.length > 0) {
             const smileProb = detections[0].expressions.happy;
             if (smileProb > 0.8 && !lastSmile) {
-              playSmileSound();
+              playSmileSound(); // trigger sound when smiling
               lastSmile = true;
-              setTimeout(() => lastSmile = false, 1000);
+              setTimeout(() => lastSmile = false, 1000); // debounce
             }
           }
         }, 500);
