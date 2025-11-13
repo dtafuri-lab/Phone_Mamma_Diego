@@ -4,51 +4,100 @@
   <meta charset="UTF-8">
   <title>Mammina Mobile Sound Archive</title>
   <style>
-    body { margin:0; background:#071827; color:#cfe9ff; font-family:sans-serif; }
-    h1 { text-align:center; padding:20px; font-size:24px; }
-
-    /* Controls */
-    #controls { padding:20px; text-align:center; }
-    button {
-      margin:8px; padding:14px 24px; font-size:18px;
-      background:#2aa1c3; color:#071827;
-      border:none; border-radius:12px; cursor:pointer;
-      transition:all 0.2s ease;
+    body {
+      margin: 0;
+      background: #071827;
+      color: #cfe9ff;
+      font-family: sans-serif;
+      text-align: center;
     }
-    button:hover { background:#88d2e8; }
-    video { margin-top:12px; max-width:100%; border:3px solid #2aa1c3; border-radius:12px; }
-
-    /* Mobile sound pad */
+    h1 {
+      padding: 20px;
+      font-size: 24px;
+    }
+    #controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      padding: 20px;
+    }
+    button {
+      padding: 14px 24px;
+      font-size: 18px;
+      background: #2aa1c3;
+      color: #071827;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      width: 80%;
+      max-width: 300px;
+    }
+    button:hover {
+      background: #88d2e8;
+    }
+    video {
+      margin-top: 12px;
+      max-width: 90%;
+      border: 3px solid #2aa1c3;
+      border-radius: 12px;
+      display: none;
+    }
     #mobilePad {
-      position: fixed; bottom: 0; left: 0; right: 0;
-      display: flex; justify-content: space-around;
-      background: #0f2a3b; padding: 14px; z-index: 999;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: space-around;
+      background: #0f2a3b;
+      padding: 14px;
+      z-index: 999;
     }
     .soundBtn {
-      flex: 1; margin: 0 6px; padding: 22px;
-      font-size: 20px; font-weight: bold;
-      background: #2aa1c3; color: #071827;
-      border: none; border-radius: 16px; cursor: pointer;
+      flex: 1;
+      margin: 0 6px;
+      padding: 22px;
+      font-size: 20px;
+      font-weight: bold;
+      background: #2aa1c3;
+      color: #071827;
+      border: none;
+      border-radius: 16px;
+      cursor: pointer;
       transition: all 0.2s ease;
     }
-    .soundBtn:active { background:#88d2e8; transform:scale(1.1); }
-    @media (min-width:768px){ #mobilePad{ display:none; } }
+    .soundBtn:active {
+      background: #88d2e8;
+      transform: scale(1.1);
+    }
+    @media (min-width: 768px) {
+      #mobilePad { display: none; }
+    }
+    #rippleCanvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      pointer-events: none;
+      z-index: 1;
+    }
   </style>
 </head>
 <body>
   <h1>Mammina Mobile Sound Archive</h1>
 
-  <!-- Controls -->
   <div id="controls">
     <button id="cameraBtn">Open Camera</button>
+    <button id="switchCameraBtn">Switch Camera</button>
     <button id="closeCameraBtn" style="display:none;">Close Camera</button>
-    <video id="cameraFeed" autoplay muted playsinline style="display:none;"></video>
-    <br>
+    <video id="cameraFeed" autoplay muted playsinline></video>
     <button id="recordBtn">Record</button>
     <button id="stopRecordBtn">Stop & Download</button>
   </div>
 
-  <!-- Mobile Sound Pad -->
+  <canvas id="rippleCanvas"></canvas>
+
   <div id="mobilePad">
     <button class="soundBtn" data-sound="kick">Kick</button>
     <button class="soundBtn" data-sound="snare">Snare</button>
@@ -56,7 +105,7 @@
   </div>
 
 <script>
-const audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 // Drum sounds
 function playKick(){const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();
@@ -80,75 +129,110 @@ function playHiHat(){const osc=audioCtx.createOscillator(),gain=audioCtx.createG
   osc.connect(gain).connect(audioCtx.destination);
   osc.start(); osc.stop(audioCtx.currentTime+0.05);}
 
+// Ripple effect
+const rippleCanvas = document.getElementById("rippleCanvas");
+const rippleCtx = rippleCanvas.getContext("2d");
+rippleCanvas.width = window.innerWidth;
+rippleCanvas.height = window.innerHeight;
+
+function triggerRipple(x, y) {
+  let radius = 0;
+  const maxRadius = 200;
+  const rippleInterval = setInterval(() => {
+    rippleCtx.clearRect(0, 0, rippleCanvas.width, rippleCanvas.height);
+    const gradient = rippleCtx.createRadialGradient(x, y, radius * 0.5, x, y, radius);
+    gradient.addColorStop(0, "rgba(138, 212, 232, 0.4)");
+    gradient.addColorStop(1, "rgba(7, 24, 39, 0)");
+    rippleCtx.fillStyle = gradient;
+    rippleCtx.beginPath();
+    rippleCtx.arc(x, y, radius, 0, 2 * Math.PI);
+    rippleCtx.fill();
+    radius += 8;
+    if (radius > maxRadius) {
+      clearInterval(rippleInterval);
+      rippleCtx.clearRect(0, 0, rippleCanvas.width, rippleCanvas.height);
+    }
+  }, 30);
+}
+
 // Attach to mobile buttons
 document.querySelectorAll(".soundBtn").forEach(btn=>{
-  btn.addEventListener("touchstart",()=>{
+  btn.addEventListener("touchstart",(e)=>{
     if(audioCtx.state==="suspended") audioCtx.resume();
-    if(btn.dataset.sound==="kick") playKick();
-    if(btn.dataset.sound==="snare") playSnare();
-    if(btn.dataset.sound==="hihat") playHiHat();
+    const sound = btn.dataset.sound;
+    if(sound==="kick") playKick();
+    if(sound==="snare") playSnare();
+    if(sound==="hihat") playHiHat();
+    const rect = btn.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    triggerRipple(x, y);
   });
 });
 
-// Camera + brightness mapping
-const cameraBtn=document.getElementById("cameraBtn"),
-      closeCameraBtn=document.getElementById("closeCameraBtn"),
-      cameraFeed=document.getElementById("cameraFeed");
-let cameraInterval,cameraStream;
+// Camera logic
+let cameraStream;
+let usingFrontCamera = true;
+const cameraFeed = document.getElementById("cameraFeed");
+const cameraBtn = document.getElementById("cameraBtn");
+const switchCameraBtn = document.getElementById("switchCameraBtn");
+const closeCameraBtn = document.getElementById("closeCameraBtn");
 
-cameraBtn.addEventListener("click",async()=>{
-  try{
-    cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"user"}});
-    cameraFeed.srcObject=cameraStream;
-    cameraFeed.style.display="block";
-    closeCameraBtn.style.display="inline-block";
-    if(cameraInterval) clearInterval(cameraInterval);
-    cameraInterval=setInterval(()=>{
-      if(cameraFeed.videoWidth>0){
-        const tempCanvas=document.createElement("canvas");
-        tempCanvas.width=cameraFeed.videoWidth; tempCanvas.height=cameraFeed.videoHeight;
-        const tctx=tempCanvas.getContext("2d"); tctx.drawImage(cameraFeed,0,0);
-        const frame=tctx.getImageData(0,0,tempCanvas.width,tempCanvas.height).data;
-        let sum=0; for(let i=0;i<frame.length;i+=4){sum+=frame[i]+frame[i+1]+frame[i+2];}
-        const avg=sum/(frame.length/4*3);
-        const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();
-        osc.type="triangle"; osc.frequency.value=200+avg/5;
-        gain.gain.value=0.05; osc.connect(gain).connect(audioCtx.destination);
-        osc.start(); osc.stop(audioCtx.currentTime+0.2);
-      }
-    },3000);
-  }catch(err){alert("Camera access failed");}
+async function startCamera() {
+  const constraints = {
+    video: { facingMode: usingFrontCamera ? "user" : "environment" }
+  };
+  cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+  cameraFeed.srcObject = cameraStream;
+  cameraFeed.style.display = "block";
+  closeCameraBtn.style.display = "inline-block";
+}
+
+cameraBtn.addEventListener("click", async () => {
+  await startCamera();
 });
 
-closeCameraBtn.addEventListener("click",()=>{
-  if(cameraStream){
-    cameraStream.getTracks().forEach(track=>track.stop());
-    cameraFeed.srcObject=null;
-    cameraFeed.style.display="none";
-    closeCameraBtn.style.display="none";
-    clearInterval(cameraInterval);
+switchCameraBtn.addEventListener("click", async () => {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(track => track.stop());
+  }
+  usingFrontCamera = !usingFrontCamera;
+  await startCamera();
+});
+
+closeCameraBtn.addEventListener("click", () => {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(track => track.stop());
+    cameraFeed.srcObject = null;
+    cameraFeed.style.display = "none";
+    closeCameraBtn.style.display = "none";
   }
 });
 
 // Recording
-let recorder,chunks=[];
-document.getElementById("recordBtn").addEventListener("click",()=>{
-  const dest=audioCtx.createMediaStreamDestination();
-  // connect drum sounds to recorder
-  recorder=new MediaRecorder(dest.stream);
-  recorder.ondataavailable=e=>chunks.push(e.data);
-  recorder.onstop=()=>{
-    const blob=new Blob(chunks,{type:"audio/webm"});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement("a");
-    a.href=url; a.download="mammina_recording.webm"; a.click();
-    chunks=[];
+let recorder, chunks = [];
+document.getElementById("recordBtn").addEventListener("click", () => {
+  const dest = audioCtx.createMediaStreamDestination();
+  recorder = new MediaRecorder(dest.stream);
+  recorder.ondataavailable = e => chunks.push(e.data);
+  recorder.onstop = () => {
+    const blob = new Blob(chunks, { type: "audio/webm" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "mammina_recording.webm";
+        a.click();
+    chunks = [];
   };
   recorder.start();
 });
-document.getElementById("stopRecordBtn").addEventListener("click",()=>{
-  if(recorder && recorder.state!=="inactive"){ recorder.stop(); }
+
+document.getElementById("stopRecordBtn").addEventListener("click", () => {
+  if (recorder && recorder.state !== "inactive") {
+    recorder.stop();
+  }
 });
 </script>
 </body>
 </html>
+
