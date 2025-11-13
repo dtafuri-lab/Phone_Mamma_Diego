@@ -75,7 +75,7 @@
     @media (min-width: 768px) {
       #mobilePad { display: none; }
     }
-    #rippleCanvas {
+    #rippleCanvas, #explosionCanvas {
       position: absolute;
       top: 0; left: 0;
       width: 100vw; height: 100vh;
@@ -97,6 +97,7 @@
   </div>
 
   <canvas id="rippleCanvas"></canvas>
+  <canvas id="explosionCanvas"></canvas>
 
   <div id="mobilePad">
     <button class="soundBtn" data-sound="kick">Kick</button>
@@ -107,29 +108,27 @@
 <script>
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-// Drum sounds
 function playKick(){const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();
-  osc.type="sine"; osc.frequency.setValueAtTime(150,audioCtx.currentTime);
-  osc.frequency.exponentialRampToValueAtTime(50,audioCtx.currentTime+0.5);
-  gain.gain.setValueAtTime(0.25,audioCtx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.5);
-  osc.connect(gain).connect(audioCtx.destination);
-  osc.start(); osc.stop(audioCtx.currentTime+0.5);}
+osc.type="sine"; osc.frequency.setValueAtTime(150,audioCtx.currentTime);
+osc.frequency.exponentialRampToValueAtTime(50,audioCtx.currentTime+0.5);
+gain.gain.setValueAtTime(0.25,audioCtx.currentTime);
+gain.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.5);
+osc.connect(gain).connect(audioCtx.destination);
+osc.start(); osc.stop(audioCtx.currentTime+0.5);}
 function playSnare(){const buffer=audioCtx.createBuffer(1,audioCtx.sampleRate*0.2,audioCtx.sampleRate);
-  const data=buffer.getChannelData(0); for(let i=0;i<data.length;i++){data[i]=Math.random()*2-1;}
-  const noise=audioCtx.createBufferSource(); noise.buffer=buffer;
-  const gain=audioCtx.createGain(); gain.gain.setValueAtTime(0.2,audioCtx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+0.2);
-  noise.connect(gain).connect(audioCtx.destination);
-  noise.start(); noise.stop(audioCtx.currentTime+0.2);}
+const data=buffer.getChannelData(0); for(let i=0;i<data.length;i++){data[i]=Math.random()*2-1;}
+const noise=audioCtx.createBufferSource(); noise.buffer=buffer;
+const gain=audioCtx.createGain(); gain.gain.setValueAtTime(0.2,audioCtx.currentTime);
+gain.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+0.2);
+noise.connect(gain).connect(audioCtx.destination);
+noise.start(); noise.stop(audioCtx.currentTime+0.2);}
 function playHiHat(){const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();
-  osc.type="square"; osc.frequency.value=8000;
-  gain.gain.setValueAtTime(0.1,audioCtx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+0.05);
-  osc.connect(gain).connect(audioCtx.destination);
-  osc.start(); osc.stop(audioCtx.currentTime+0.05);}
+osc.type="square"; osc.frequency.value=8000;
+gain.gain.setValueAtTime(0.1,audioCtx.currentTime);
+gain.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+0.05);
+osc.connect(gain).connect(audioCtx.destination);
+osc.start(); osc.stop(audioCtx.currentTime+0.05);}
 
-// Ripple effect
 const rippleCanvas = document.getElementById("rippleCanvas");
 const rippleCtx = rippleCanvas.getContext("2d");
 rippleCanvas.width = window.innerWidth;
@@ -155,7 +154,55 @@ function triggerRipple(x, y) {
   }, 30);
 }
 
-// Attach to mobile buttons
+const explosionCanvas = document.getElementById("explosionCanvas");
+const explosionCtx = explosionCanvas.getContext("2d");
+explosionCanvas.width = window.innerWidth;
+explosionCanvas.height = window.innerHeight;
+
+function triggerExplosion() {
+  const tempCanvas = document.createElement("canvas");
+  tempCanvas.width = cameraFeed.videoWidth;
+  tempCanvas.height = cameraFeed.videoHeight;
+  const tctx = tempCanvas.getContext("2d");
+  tctx.drawImage(cameraFeed, 0, 0);
+  const frame = tctx.getImageData(0, 0, tempCanvas.width, tempCanvas.height).data;
+
+  let particles = [];
+  const step = 8;
+  for (let y = 0; y < tempCanvas.height; y += step) {
+    for (let x = 0; x < tempCanvas.width; x += step) {
+      const i = (y * tempCanvas.width + x) * 4;
+      const r = frame[i], g = frame[i+1], b = frame[i+2];
+      const color = `rgb(${r},${g},${b})`;
+      const angle = Math.random() * 2 * Math.PI;
+      const speed = Math.random() * 4 + 2;
+      particles.push({
+        x: x + window.innerWidth/2 - tempCanvas.width/2,
+        y: y + window.innerHeight/2 - tempCanvas.height/2,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        size: step,
+        color,
+        life: 60
+      });
+    }
+  }
+
+  function animate() {
+    explosionCtx.clearRect(0, 0, explosionCanvas.width, explosionCanvas.height);
+    particles.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life -= 1;
+      explosionCtx.fillStyle = p.color;
+      explosionCtx.fillRect(p.x, p.y, p.size, p.size);
+    });
+    particles = particles.filter(p => p.life > 0);
+    if (particles.length > 0) requestAnimationFrame(animate);
+  }
+  animate();
+}
+
 document.querySelectorAll(".soundBtn").forEach(btn=>{
   btn.addEventListener("touchstart",(e)=>{
     if(audioCtx.state==="suspended") audioCtx.resume();
@@ -167,10 +214,10 @@ document.querySelectorAll(".soundBtn").forEach(btn=>{
     const x = rect.left + rect.width / 2;
     const y = rect.top + rect.height / 2;
     triggerRipple(x, y);
+    triggerExplosion();
   });
 });
 
-// Camera logic
 let cameraStream;
 let usingFrontCamera = true;
 const cameraFeed = document.getElementById("cameraFeed");
@@ -209,10 +256,11 @@ closeCameraBtn.addEventListener("click", () => {
   }
 });
 
-// Recording
 let recorder, chunks = [];
 document.getElementById("recordBtn").addEventListener("click", () => {
   const dest = audioCtx.createMediaStreamDestination();
+  const source = audioCtx.createGain();
+  source.connect(dest);
   recorder = new MediaRecorder(dest.stream);
   recorder.ondataavailable = e => chunks.push(e.data);
   recorder.onstop = () => {
@@ -221,7 +269,7 @@ document.getElementById("recordBtn").addEventListener("click", () => {
     const a = document.createElement("a");
     a.href = url;
     a.download = "mammina_recording.webm";
-        a.click();
+    a.click();
     chunks = [];
   };
   recorder.start();
