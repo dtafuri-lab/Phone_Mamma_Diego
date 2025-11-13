@@ -4,89 +4,19 @@
   <meta charset="UTF-8">
   <title>Mammina Mobile Sound Archive</title>
   <style>
-    body {
-      margin: 0;
-      background: #071827;
-      color: #cfe9ff;
-      font-family: sans-serif;
-      text-align: center;
-    }
-    h1 {
-      padding: 20px;
-      font-size: 26px;
-    }
-    #controls {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 14px;
-      padding: 20px;
-    }
-    button {
-      padding: 18px 28px;
-      font-size: 20px;
-      background: #2aa1c3;
-      color: #071827;
-      border: none;
-      border-radius: 14px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      width: 90%;
-      max-width: 340px;
-    }
-    button:hover {
-      background: #88d2e8;
-    }
-    video {
-      margin-top: 16px;
-      max-width: 90%;
-      border: 3px solid #2aa1c3;
-      border-radius: 14px;
-      display: none;
-    }
-    #mobilePad {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      display: flex;
-      justify-content: space-around;
-      background: #0f2a3b;
-      padding: 18px;
-      z-index: 999;
-    }
-    .soundBtn {
-      flex: 1;
-      margin: 0 8px;
-      padding: 26px;
-      font-size: 22px;
-      font-weight: bold;
-      background: #2aa1c3;
-      color: #071827;
-      border: none;
-      border-radius: 18px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-    .soundBtn:active {
-      background: #88d2e8;
-      transform: scale(1.1);
-    }
-    @media (min-width: 768px) {
-      #mobilePad { display: none; }
-    }
-    #rippleCanvas, #explosionCanvas {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100vw; height: 100vh;
-      pointer-events: none;
-      z-index: 1;
-    }
+    body { margin:0; background:#071827; color:#cfe9ff; font-family:sans-serif; text-align:center; }
+    h1 { padding:20px; font-size:26px; }
+    #controls { display:flex; flex-direction:column; align-items:center; gap:16px; padding:20px; }
+    button { padding:20px 30px; font-size:22px; background:#2aa1c3; color:#071827; border:none; border-radius:16px; cursor:pointer; width:92%; max-width:380px; }
+    video { margin-top:16px; max-width:92%; border:3px solid #2aa1c3; border-radius:16px; display:none; }
+    #mobilePad { position:fixed; bottom:0; left:0; right:0; display:flex; justify-content:space-around; background:#0f2a3b; padding:20px; z-index:10; }
+    .soundBtn { flex:1; margin:0 8px; padding:28px; font-size:22px; font-weight:bold; background:#2aa1c3; color:#071827; border:none; border-radius:18px; }
+    @media (min-width:768px){ #mobilePad{ display:none; } }
+    #rippleCanvas, #explosionCanvas { position:fixed; top:0; left:0; width:100vw; height:100vh; pointer-events:none; z-index:5; }
   </style>
 </head>
 <body>
   <h1>Mammina Mobile Sound Archive</h1>
-
   <div id="controls">
     <button id="cameraBtn">Open Camera</button>
     <button id="switchCameraBtn">Switch Camera</button>
@@ -95,71 +25,71 @@
     <button id="recordBtn">Record</button>
     <button id="stopRecordBtn">Stop & Download</button>
   </div>
-
   <canvas id="rippleCanvas"></canvas>
   <canvas id="explosionCanvas"></canvas>
-
   <div id="mobilePad">
     <button class="soundBtn" data-sound="kick">Kick</button>
     <button class="soundBtn" data-sound="snare">Snare</button>
     <button class="soundBtn" data-sound="hihat">HiHat</button>
   </div>
-
 <script>
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const masterGain = audioCtx.createGain();
+masterGain.gain.value = 1.0;
+masterGain.connect(audioCtx.destination);
+
+const recorderDest = audioCtx.createMediaStreamDestination();
+masterGain.connect(recorderDest);
 
 function playKick(){const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();
 osc.type="sine"; osc.frequency.setValueAtTime(150,audioCtx.currentTime);
 osc.frequency.exponentialRampToValueAtTime(50,audioCtx.currentTime+0.5);
-gain.gain.setValueAtTime(0.25,audioCtx.currentTime);
+gain.gain.setValueAtTime(0.35,audioCtx.currentTime);
 gain.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.5);
-osc.connect(gain).connect(audioCtx.destination);
+osc.connect(gain).connect(masterGain);
 osc.start(); osc.stop(audioCtx.currentTime+0.5);}
 function playSnare(){const buffer=audioCtx.createBuffer(1,audioCtx.sampleRate*0.2,audioCtx.sampleRate);
 const data=buffer.getChannelData(0); for(let i=0;i<data.length;i++){data[i]=Math.random()*2-1;}
 const noise=audioCtx.createBufferSource(); noise.buffer=buffer;
-const gain=audioCtx.createGain(); gain.gain.setValueAtTime(0.2,audioCtx.currentTime);
+const gain=audioCtx.createGain(); gain.gain.setValueAtTime(0.3,audioCtx.currentTime);
 gain.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+0.2);
-noise.connect(gain).connect(audioCtx.destination);
+noise.connect(gain).connect(masterGain);
 noise.start(); noise.stop(audioCtx.currentTime+0.2);}
 function playHiHat(){const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();
 osc.type="square"; osc.frequency.value=8000;
-gain.gain.setValueAtTime(0.1,audioCtx.currentTime);
-gain.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+0.05);
-osc.connect(gain).connect(audioCtx.destination);
-osc.start(); osc.stop(audioCtx.currentTime+0.05);}
+gain.gain.setValueAtTime(0.15,audioCtx.currentTime);
+gain.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+0.06);
+osc.connect(gain).connect(masterGain);
+osc.start(); osc.stop(audioCtx.currentTime+0.06);}
 
 const rippleCanvas = document.getElementById("rippleCanvas");
 const rippleCtx = rippleCanvas.getContext("2d");
-rippleCanvas.width = window.innerWidth;
-rippleCanvas.height = window.innerHeight;
+function sizeCanvases(){rippleCanvas.width=window.innerWidth; rippleCanvas.height=window.innerHeight; explosionCanvas.width=window.innerWidth; explosionCanvas.height=window.innerHeight;}
+window.addEventListener("resize", sizeCanvases);
 
 function triggerRipple(x, y) {
   let radius = 0;
-  const maxRadius = 200;
-  const rippleInterval = setInterval(() => {
-    rippleCtx.clearRect(0, 0, rippleCanvas.width, rippleCanvas.height);
-    const gradient = rippleCtx.createRadialGradient(x, y, radius * 0.5, x, y, radius);
-    gradient.addColorStop(0, "rgba(138, 212, 232, 0.4)");
-    gradient.addColorStop(1, "rgba(7, 24, 39, 0)");
-    rippleCtx.fillStyle = gradient;
+  const maxRadius = Math.min(rippleCanvas.width, rippleCanvas.height) * 0.5;
+  function step(){
+    rippleCtx.clearRect(0,0,rippleCanvas.width,rippleCanvas.height);
+    const g = rippleCtx.createRadialGradient(x, y, radius*0.3, x, y, radius);
+    g.addColorStop(0, "rgba(138,212,232,0.45)");
+    g.addColorStop(1, "rgba(7,24,39,0)");
+    rippleCtx.fillStyle = g;
     rippleCtx.beginPath();
-    rippleCtx.arc(x, y, radius, 0, 2 * Math.PI);
+    rippleCtx.arc(x, y, radius, 0, Math.PI*2);
     rippleCtx.fill();
-    radius += 8;
-    if (radius > maxRadius) {
-      clearInterval(rippleInterval);
-      rippleCtx.clearRect(0, 0, rippleCanvas.width, rippleCanvas.height);
-    }
-  }, 30);
+    radius += 12;
+    if(radius <= maxRadius){ requestAnimationFrame(step); } else { rippleCtx.clearRect(0,0,rippleCanvas.width,rippleCanvas.height); }
+  }
+  step();
 }
 
 const explosionCanvas = document.getElementById("explosionCanvas");
 const explosionCtx = explosionCanvas.getContext("2d");
-explosionCanvas.width = window.innerWidth;
-explosionCanvas.height = window.innerHeight;
 
 function triggerExplosion() {
+  if (!cameraFeed.videoWidth || !cameraFeed.videoHeight) return;
   const tempCanvas = document.createElement("canvas");
   tempCanvas.width = cameraFeed.videoWidth;
   tempCanvas.height = cameraFeed.videoHeight;
@@ -168,37 +98,34 @@ function triggerExplosion() {
   const frame = tctx.getImageData(0, 0, tempCanvas.width, tempCanvas.height).data;
 
   let particles = [];
-  const step = 8;
+  const step = 10;
   for (let y = 0; y < tempCanvas.height; y += step) {
     for (let x = 0; x < tempCanvas.width; x += step) {
       const i = (y * tempCanvas.width + x) * 4;
       const r = frame[i], g = frame[i+1], b = frame[i+2];
       const color = `rgb(${r},${g},${b})`;
       const angle = Math.random() * 2 * Math.PI;
-      const speed = Math.random() * 4 + 2;
+      const speed = Math.random() * 6 + 3;
       particles.push({
-        x: x + window.innerWidth/2 - tempCanvas.width/2,
-        y: y + window.innerHeight/2 - tempCanvas.height/2,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
+        x: x + (explosionCanvas.width - tempCanvas.width)/2,
+        y: y + (explosionCanvas.height - tempCanvas.height)/2,
+        vx: Math.cos(angle)*speed,
+        vy: Math.sin(angle)*speed,
         size: step,
         color,
-        life: 60
+        life: 50
       });
     }
   }
-
-  function animate() {
-    explosionCtx.clearRect(0, 0, explosionCanvas.width, explosionCanvas.height);
-    particles.forEach(p => {
-      p.x += p.vx;
-      p.y += p.vy;
-      p.life -= 1;
+  function animate(){
+    explosionCtx.clearRect(0,0,explosionCanvas.width,explosionCanvas.height);
+    particles.forEach(p=>{
+      p.x += p.vx; p.y += p.vy; p.life -= 1;
       explosionCtx.fillStyle = p.color;
       explosionCtx.fillRect(p.x, p.y, p.size, p.size);
     });
-    particles = particles.filter(p => p.life > 0);
-    if (particles.length > 0) requestAnimationFrame(animate);
+    particles = particles.filter(p=>p.life>0);
+    if(particles.length>0){ requestAnimationFrame(animate); }
   }
   animate();
 }
@@ -206,13 +133,25 @@ function triggerExplosion() {
 document.querySelectorAll(".soundBtn").forEach(btn=>{
   btn.addEventListener("touchstart",(e)=>{
     if(audioCtx.state==="suspended") audioCtx.resume();
-    const sound = btn.dataset.sound;
-    if(sound==="kick") playKick();
-    if(sound==="snare") playSnare();
-    if(sound==="hihat") playHiHat();
+    const s=btn.dataset.sound;
+    if(s==="kick") playKick();
+    if(s==="snare") playSnare();
+    if(s==="hihat") playHiHat();
     const rect = btn.getBoundingClientRect();
-    const x = rect.left + rect.width / 2;
-    const y = rect.top + rect.height / 2;
+    const x = rect.left + rect.width/2;
+    const y = rect.top + rect.height/2;
+    triggerRipple(x, y);
+    triggerExplosion();
+  });
+  btn.addEventListener("click",(e)=>{
+    if(audioCtx.state==="suspended") audioCtx.resume();
+    const s=btn.dataset.sound;
+    if(s==="kick") playKick();
+    if(s==="snare") playSnare();
+    if(s==="hihat") playHiHat();
+    const rect = btn.getBoundingClientRect();
+    const x = rect.left + rect.width/2;
+    const y = rect.top + rect.height/2;
     triggerRipple(x, y);
     triggerExplosion();
   });
@@ -226,23 +165,22 @@ const switchCameraBtn = document.getElementById("switchCameraBtn");
 const closeCameraBtn = document.getElementById("closeCameraBtn");
 
 async function startCamera() {
-  const constraints = {
-    video: { facingMode: usingFrontCamera ? "user" : "environment" }
-  };
+  const constraints = { video: { facingMode: usingFrontCamera ? "user" : "environment" } };
   cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
   cameraFeed.srcObject = cameraStream;
+  await cameraFeed.play();
   cameraFeed.style.display = "block";
   closeCameraBtn.style.display = "inline-block";
+  sizeCanvases();
 }
 
 cameraBtn.addEventListener("click", async () => {
+  if(audioCtx.state==="suspended") await audioCtx.resume();
   await startCamera();
 });
 
 switchCameraBtn.addEventListener("click", async () => {
-  if (cameraStream) {
-    cameraStream.getTracks().forEach(track => track.stop());
-  }
+  if (cameraStream) cameraStream.getTracks().forEach(t=>t.stop());
   usingFrontCamera = !usingFrontCamera;
   await startCamera();
 });
@@ -257,32 +195,31 @@ closeCameraBtn.addEventListener("click", () => {
 });
 
 let recorder, chunks = [];
-document.getElementById("recordBtn").addEventListener("click", () => {
-  const dest = audioCtx.createMediaStreamDestination();
-  const source = audioCtx.createGain();
-  source.connect(dest);
-  source.connect(audioCtx.destination);
-  recorder = new MediaRecorder(dest.stream);
-  recorder.ondataavailable = e => chunks.push(e.data);
+document.getElementById("recordBtn").addEventListener("click", async () => {
+  if(audioCtx.state==="suspended") await audioCtx.resume();
+  chunks = [];
+  recorder = new MediaRecorder(recorderDest.stream, { mimeType: "audio/webm" });
+  recorder.ondataavailable = e => { if(e.data.size>0) chunks.push(e.data); };
   recorder.onstop = () => {
-    const blob = new Blob(chunks, { type: "video/mp4" });
+    const blob = new Blob(chunks, { type: "audio/webm" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "mammina_recording.mp4";
+    a.download = "mammina_recording.webm";
     a.click();
-    chunks = [];
+    URL.revokeObjectURL(url);
   };
   recorder.start();
 });
 
 document.getElementById("stopRecordBtn").addEventListener("click", () => {
-  if (recorder && recorder.state !== "inactive") {
-    recorder.stop();
-  }
+  if (recorder && recorder.state !== "inactive") recorder.stop();
 });
+
+sizeCanvases();
 </script>
 </body>
 </html>
+
 
 
