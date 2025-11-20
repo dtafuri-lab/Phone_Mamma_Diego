@@ -3,108 +3,174 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Fotocamera selettiva</title>
+  <title>Fotocamera selettiva — “Can you see red?”</title>
   <style>
-    :root { --accent:#111; --ok:#1ea672; --warn:#d9534f; }
-    body { margin:0; font:14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Helvetica; background:#fafafa; color:#111; }
-    header { padding:12px 16px; border-bottom:1px solid #ddd; }
-    main { display:grid; gap:12px; padding:12px; }
-    video, canvas { width:100%; max-width:420px; border-radius:8px; background:#000; }
-    .row { display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
-    label { display:inline-flex; align-items:center; gap:6px; }
+    :root { --fg:#0f0f10; --muted:#666; --ok:#0f5132; --no:#842029; --bg:#f7f7f7; }
+    * { box-sizing:border-box; }
+    body { margin:0; font:14px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; background:#fff; color:var(--fg); }
+    header { padding:14px 16px; border-bottom:1px solid #e3e3e3; }
+    header h1 { margin:0 0 4px; font-size:18px; }
+    header p { margin:0; color:var(--muted); font-size:13px; }
+    main { display:grid; gap:12px; padding:14px; }
+    .pane { display:grid; gap:10px; max-width:480px; }
+    video, canvas { width:100%; aspect-ratio:4/3; background:#000; border-radius:10px; }
+    .controls { display:grid; gap:10px; }
+    .row { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+    label { display:flex; align-items:center; gap:8px; }
     input[type="range"] { width:160px; }
-    button { padding:10px 14px; border:1px solid #222; background:#fff; border-radius:8px; cursor:pointer; }
-    button[disabled] { opacity:.4; cursor:not-allowed; }
-    .status { font-size:13px; color:#555; }
-    .chip { padding:4px 8px; border-radius:12px; background:#eee; }
-    .chip.ok { background:#cfeadb; color:#0f5132; }
-    .chip.no { background:#f5d3d1; color:#842029; }
-    .out { display:grid; gap:8px; }
-    img.output { width:100%; max-width:420px; background:conic-gradient(from 180deg at 50% 50%, #fff 0 25%, #f7f7f7 25% 50%, #fff 50% 75%, #f7f7f7 75% 100%); border:1px dashed #bbb; border-radius:8px; }
+    input[type="text"] { padding:8px 10px; border:1px solid #ccc; border-radius:8px; width:180px; }
+    select, button { padding:10px 12px; border:1px solid #222; background:#fff; border-radius:8px; cursor:pointer; }
+    button[disabled] { opacity:.45; cursor:not-allowed; }
+    .chip { padding:4px 8px; border-radius:999px; font-size:12px; }
+    .ok { background:#cfeadb; color:var(--ok); }
+    .no { background:#f4d6d4; color:var(--no); }
+    .swatch { width:18px; height:18px; border-radius:50%; border:1px solid #ccc; }
+    .status { color:var(--muted); font-size:12px; }
+    .out { display:grid; gap:10px; }
+    img.output { width:100%; max-width:480px; border-radius:10px; border:1px dashed #cfcfcf; background:repeating-linear-gradient(45deg,#fafafa,#fafafa 10px,#f3f3f3 10px,#f3f3f3 20px); }
+    .flash { position:fixed; inset:0; background:#fff; z-index:9999; }
   </style>
 </head>
 <body>
 <header>
-  <strong>Fotocamera selettiva</strong> — lo scatto accade solo sotto condizione
+  <h1>Fotocamera selettiva</h1>
+  <p>Lo scatto si sblocca solo quando il colore richiesto domina la scena.</p>
 </header>
 
 <main>
-  <video id="v" playsinline autoplay muted></video>
-  <canvas id="frame" width="640" height="480" hidden></canvas>
+  <section class="pane">
+    <video id="v" playsinline autoplay muted></video>
+    <canvas id="frame" width="640" height="480" hidden></canvas>
 
-  <div class="row">
-    <label>
-      <span>Modalità:</span>
-      <select id="mode">
-        <option value="color">Soglia colore</option>
-        <option value="gesture">Gesto (accelerazione)</option>
-      </select>
-    </label>
-    <label id="colorControls">
-      <span>Tonalità (H):</span>
-      <input id="hue" type="range" min="0" max="360" value="200" />
-      <span id="hueVal" class="chip">200°</span>
-    </label>
-    <label id="tolControls">
-      <span>Tolleranza:</span>
-      <input id="tol" type="range" min="2" max="40" value="12" />
-      <span id="tolVal" class="chip">±12</span>
-    </label>
-    <label id="pctControls">
-      <span>Percentuale minima:</span>
-      <input id="pct" type="range" min="5" max="80" value="35" />
-      <span id="pctVal" class="chip">35%</span>
-    </label>
-    <label id="gestControls" style="display:none;">
-      <span>Soglia gesto:</span>
-      <input id="gth" type="range" min="10" max="30" value="18" />
-      <span id="gthVal" class="chip">18</span>
-    </label>
-  </div>
+    <div class="controls">
+      <div class="row">
+        <label>
+          <span>Modalità:</span>
+          <select id="mode">
+            <option value="color">Soglia colore</option>
+            <option value="gesture">Gesto (accelerazione)</option>
+          </select>
+        </label>
 
-  <div class="row">
-    <button id="shoot" disabled>Scatta (PNG circolare)</button>
-    <span id="gate" class="chip no">Bloccato</span>
-    <span id="status" class="status">Avvio…</span>
-  </div>
+        <label id="askControls">
+          <span>Chiedi un colore:</span>
+          <input id="ask" type="text" placeholder="es. red, blue, giallo" />
+          <button id="applyAsk">Applica</button>
+          <button id="voice">Ascolta voce</button>
+        </label>
+      </div>
 
-  <div class="out">
-    <img id="out" class="output" alt="Output PNG" />
-  </div>
+      <div class="row" id="colorRow">
+        <label>
+          <span>Tonalità (H):</span>
+          <input id="hue" type="range" min="0" max="360" value="0" />
+          <span id="hueVal" class="chip">0°</span>
+          <span class="swatch" id="swatch" style="background:hsl(0deg, 85%, 55%);"></span>
+        </label>
+        <label>
+          <span>Tolleranza:</span>
+          <input id="tol" type="range" min="4" max="40" value="18" />
+          <span id="tolVal" class="chip">±18</span>
+        </label>
+        <label>
+          <span>Percentuale minima:</span>
+          <input id="pct" type="range" min="5" max="80" value="35" />
+          <span id="pctVal" class="chip">35%</span>
+        </label>
+      </div>
+
+      <div class="row" id="gestRow" style="display:none;">
+        <label>
+          <span>Soglia gesto (|a|):</span>
+          <input id="gth" type="range" min="10" max="30" value="18" />
+          <span id="gthVal" class="chip">18</span>
+        </label>
+        <span class="status">Tocca una volta su iOS per consentire il motion.</span>
+      </div>
+
+      <div class="row">
+        <button id="shoot" disabled>Scatta (PNG circolare)</button>
+        <button id="flashToggle">Flash simulato</button>
+        <span id="gateChip" class="chip no">Bloccato</span>
+      </div>
+
+      <div class="status" id="status">Avvio…</div>
+    </div>
+
+    <div class="out">
+      <img id="out" class="output" alt="Output PNG" />
+    </div>
+  </section>
 </main>
 
 <script>
 const v = document.getElementById('v');
 const frame = document.getElementById('frame');
 const ctx = frame.getContext('2d', { willReadFrequently: true });
-const shoot = document.getElementById('shoot');
-const gateChip = document.getElementById('gate');
-const statusEl = document.getElementById('status');
 
 const modeSel = document.getElementById('mode');
+const ask = document.getElementById('ask');
+const applyAsk = document.getElementById('applyAsk');
+const voiceBtn = document.getElementById('voice');
+
 const hue = document.getElementById('hue');
 const tol = document.getElementById('tol');
 const pct = document.getElementById('pct');
-const gth = document.getElementById('gth');
 const hueVal = document.getElementById('hueVal');
 const tolVal = document.getElementById('tolVal');
 const pctVal = document.getElementById('pctVal');
+const swatch = document.getElementById('swatch');
+
+const gth = document.getElementById('gth');
 const gthVal = document.getElementById('gthVal');
 
-const colorControls = document.getElementById('colorControls');
-const tolControls = document.getElementById('tolControls');
-const pctControls = document.getElementById('pctControls');
-const gestControls = document.getElementById('gestControls');
+const colorRow = document.getElementById('colorRow');
+const gestRow = document.getElementById('gestRow');
 
+const shoot = document.getElementById('shoot');
+const flashToggle = document.getElementById('flashToggle');
+const gateChip = document.getElementById('gateChip');
+const statusEl = document.getElementById('status');
 const outImg = document.getElementById('out');
 
 let stream, gatingOK = false;
 let lastGestureTime = 0;
+let useSimFlash = true;
 
+// Map color names (it/en) -> hue
+const colorMap = {
+  red: 0, rosso: 0,
+  orange: 30, arancione: 30,
+  yellow: 60, giallo: 60,
+  green: 120, verde: 120,
+  cyan: 180, ciano: 180, turchese: 180,
+  blue: 240, blu: 240,
+  magenta: 300, fucsia: 300,
+  pink: 330, rosa: 330,
+  purple: 280, viola: 280,
+  brown: 20, marrone: 20
+};
+
+// --- camera
+async function startCamera(){
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+    v.srcObject = stream;
+    statusEl.textContent = 'Camera attiva. Scegli un colore o pronuncia “red”.';
+    analyzeLoop();
+    setupMotion();
+  } catch (e){
+    console.error(e);
+    statusEl.textContent = 'Permesso negato o camera non disponibile.';
+  }
+}
+
+// --- hue utilities
 function rgbToHue(r,g,b){
   r/=255; g/=255; b/=255;
   const max = Math.max(r,g,b), min = Math.min(r,g,b);
-  let h, d = max - min;
+  const d = max - min;
+  let h = 0;
   if (d === 0) h = 0;
   else if (max === r) h = ((g - b) / d) % 6;
   else if (max === g) h = (b - r) / d + 2;
@@ -115,71 +181,76 @@ function rgbToHue(r,g,b){
 }
 
 function percentHue(imageData, targetHue, tolerance){
-  const d = imageData.data; let hit = 0, px = d.length/4;
+  const d = imageData.data;
+  let hit = 0, px = d.length / 4;
   for (let i=0; i<d.length; i+=4){
     const h = rgbToHue(d[i], d[i+1], d[i+2]);
-    const diff = Math.min(Math.abs(h - targetHue), Math.abs(h - targetHue + 360), Math.abs(h - targetHue - 360));
+    // wrap-around distance for hues (red at 0/360)
+    const diff = Math.min(
+      Math.abs(h - targetHue),
+      Math.abs(h - targetHue + 360),
+      Math.abs(h - targetHue - 360)
+    );
     if (diff <= tolerance) hit++;
   }
   return (hit / px) * 100;
 }
 
-function updateUI(){
-  gateChip.textContent = gatingOK ? 'Sbloccato' : 'Bloccato';
-  gateChip.className = 'chip ' + (gatingOK ? 'ok' : 'no');
-  shoot.disabled = !gatingOK;
-}
-
-async function start(){
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
-    v.srcObject = stream;
-    statusEl.textContent = 'Camera attiva. Tocca per permettere motion su iOS.';
-    analyzeLoop();
-    setupMotion();
-  } catch (e){
-    statusEl.textContent = 'Permesso negato o camera indisponibile.';
-    console.error(e);
-  }
-}
-
+// --- analysis loop
 function analyzeLoop(){
   if (v.readyState >= 2){
     const w = frame.width, h = frame.height;
     ctx.drawImage(v, 0, 0, w, h);
     const data = ctx.getImageData(0, 0, w, h);
-    const m = modeSel.value;
-    if (m === 'color'){
+    const mode = modeSel.value;
+
+    if (mode === 'color'){
       const p = percentHue(data, Number(hue.value), Number(tol.value));
       gatingOK = p >= Number(pct.value);
       statusEl.textContent = `Dominanza H≈${hue.value}°: ${p.toFixed(1)}% (min ${pct.value}%)`;
     } else {
       const since = (performance.now() - lastGestureTime) / 1000;
-      gatingOK = since >= 0 && since <= 0.8; // finestra breve dopo gesto
+      gatingOK = since >= 0 && since <= 0.8;
       statusEl.textContent = gatingOK ? 'Gesto rilevato: scatta ora' : 'In attesa di gesto…';
     }
-    updateUI();
+    updateGateUI();
   }
   requestAnimationFrame(analyzeLoop);
 }
 
+function updateGateUI(){
+  gateChip.textContent = gatingOK ? 'Sbloccato' : 'Bloccato';
+  gateChip.className = 'chip ' + (gatingOK ? 'ok' : 'no');
+  shoot.disabled = !gatingOK;
+}
+
+// --- gesture
 function setupMotion(){
   function onMotion(e){
     const a = e.accelerationIncludingGravity || e.acceleration || {x:0,y:0,z:0};
     const mag = Math.sqrt((a.x||0)**2 + (a.y||0)**2 + (a.z||0)**2);
-    if (mag > Number(gth.value)){
-      lastGestureTime = performance.now();
-    }
+    if (mag > Number(gth.value)) lastGestureTime = performance.now();
   }
-  window.addEventListener('devicemotion', onMotion, { passive: true });
-  // iOS needs a tap to enable motion
+  window.addEventListener('devicemotion', onMotion, { passive:true });
+
+  // iOS needs a user gesture to allow motion
   document.body.addEventListener('click', async ()=>{
     if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function'){
-      try { await DeviceMotionEvent.requestPermission(); statusEl.textContent = 'Motion abilitato.'; } catch {}
+      try { const res = await DeviceMotionEvent.requestPermission(); if (res==='granted') statusEl.textContent = 'Motion abilitato.'; } catch {}
     }
   }, { once:true });
 }
 
+// --- flash simulation
+function simulateFlash(){
+  if (!useSimFlash) return;
+  const f = document.createElement('div');
+  f.className = 'flash';
+  document.body.appendChild(f);
+  setTimeout(()=>{ f.remove(); }, 90);
+}
+
+// --- masked capture
 function drawMaskedToCanvas(srcCanvas){
   const w = srcCanvas.width, h = srcCanvas.height;
   const out = document.createElement('canvas');
@@ -197,31 +268,107 @@ function drawMaskedToCanvas(srcCanvas){
 }
 
 function capture(){
+  simulateFlash();
   const masked = drawMaskedToCanvas(frame);
   const png = masked.toDataURL('image/png');
   outImg.src = png;
-  // auto-download for desktop; on mobile shows preview and save action via long-press
+  // auto-download for desktop; on mobile use long-press/save
   const a = document.createElement('a');
   a.href = png; a.download = 'scatto_selettivo.png';
   a.click();
 }
 
-hue.addEventListener('input', ()=>{ hueVal.textContent = `${hue.value}°`; });
+// --- voice recognition (Web Speech API)
+let recog;
+function startVoice(){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR){
+    statusEl.textContent = 'Voce non supportata in questo browser. Usa la casella testo.';
+    return;
+  }
+  if (!recog){
+    recog = new SR();
+    recog.lang = 'en-US'; // you can switch to 'it-IT' if you prefer
+    recog.interimResults = false;
+    recog.maxAlternatives = 3;
+    recog.onresult = (e) => {
+      const said = e.results[0][0].transcript.toLowerCase().trim();
+      statusEl.textContent = `Hai detto: “${said}”`;
+      setColorByName(said);
+    };
+    recog.onerror = (e) => { statusEl.textContent = 'Errore voce: ' + (e.error || ''); };
+    recog.onend = ()=>{};
+  }
+  try { recog.start(); statusEl.textContent = 'Ascolto… dì “red”, “blue”, “verde”…'; } catch {}
+}
+
+function setColorByName(name){
+  // accept single words; strip extras like "can you see red"
+  const tokens = name.split(/\s+/);
+  let picked = null;
+  // try exact and contains
+  for (const t of tokens){
+    if (colorMap[t]) { picked = colorMap[t]; break; }
+  }
+  if (!picked){
+    // fallback: search known color names inside the phrase
+    for (const k of Object.keys(colorMap)){
+      if (name.includes(k)) { picked = colorMap[k]; break; }
+    }
+  }
+  if (picked !== null){
+    hue.value = picked;
+    hueVal.textContent = `${picked}°`;
+    swatch.style.background = `hsl(${picked}deg, 85%, 55%)`;
+    statusEl.textContent = `In cerca di ${closestColorName(picked)}…`;
+  } else {
+    statusEl.textContent = 'Colore non riconosciuto. Prova “red”, “blu”, “verde”…';
+  }
+}
+
+function closestColorName(h){
+  // simple inverse lookup by hue distance
+  const entries = Object.entries(colorMap);
+  let best = { name:'', d: 999 };
+  for (const [name, hv] of entries){
+    const diff = Math.min(Math.abs(h - hv), Math.abs(h - hv + 360), Math.abs(h - hv - 360));
+    if (diff < best.d){ best = { name, d: diff }; }
+  }
+  return best.name;
+}
+
+// --- UI events
+hue.addEventListener('input', ()=>{
+  hueVal.textContent = `${hue.value}°`;
+  swatch.style.background = `hsl(${hue.value}deg, 85%, 55%)`;
+});
 tol.addEventListener('input', ()=>{ tolVal.textContent = `±${tol.value}`; });
 pct.addEventListener('input', ()=>{ pctVal.textContent = `${pct.value}%`; });
+
 gth.addEventListener('input', ()=>{ gthVal.textContent = `${gth.value}`; });
 
 modeSel.addEventListener('change', ()=>{
   const isColor = modeSel.value === 'color';
-  colorControls.style.display = isColor ? '' : 'none';
-  tolControls.style.display   = isColor ? '' : 'none';
-  pctControls.style.display   = isColor ? '' : 'none';
-  gestControls.style.display  = isColor ? 'none' : '';
+  colorRow.style.display = isColor ? '' : 'none';
+  gestRow.style.display  = isColor ? 'none' : '';
+});
+
+applyAsk.addEventListener('click', ()=>{
+  const q = ask.value.toLowerCase().trim();
+  if (q) setColorByName(q);
+});
+
+voiceBtn.addEventListener('click', startVoice);
+
+flashToggle.addEventListener('click', ()=>{
+  useSimFlash = !useSimFlash;
+  flashToggle.textContent = useSimFlash ? 'Flash simulato' : 'Flash disattivato';
 });
 
 shoot.addEventListener('click', capture);
 
-start();
+// --- start
+startCamera();
 </script>
 </body>
 </html>
