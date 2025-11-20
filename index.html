@@ -93,7 +93,7 @@
     </section>
   </div>
 
-  <canvas id="c" width="640" height="480" hidden></canvas>
+  <canvas id="c" hidden></canvas>
 
   <script>
     const v = document.getElementById('v');
@@ -117,6 +117,13 @@
           audio: false
         });
         v.srcObject = stream;
+
+        // Match canvas size to actual video resolution
+        v.addEventListener('loadedmetadata', () => {
+          c.width = v.videoWidth;
+          c.height = v.videoHeight;
+        });
+
         analyze();
       } catch (e) {
         gateText.textContent = 'Camera permission denied.';
@@ -155,7 +162,7 @@
     }
 
     function analyze(){
-      if (v.readyState >= 2){
+      if (v.readyState >= 2 && c.width && c.height){
         ctx.drawImage(v, 0, 0, c.width, c.height);
         const data = ctx.getImageData(0, 0, c.width, c.height);
         const pct = percentTargetHue(data);
