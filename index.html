@@ -14,7 +14,7 @@
       margin:0; background:var(--bg); color:var(--fg);
       font:15px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
       display:flex; flex-direction:column; align-items:center; justify-content:center;
-      height:100vh; overflow:hidden; /* no scrolling */
+      height:100vh; overflow:hidden;
     }
     .app {
       width:100vw; height:100vh; display:grid;
@@ -62,7 +62,6 @@
       box-shadow:0 8px 24px rgba(224,24,45,.35);
     }
     #shoot[disabled] { opacity:.45; cursor:not-allowed; box-shadow:none; }
-    .note { text-align:center; font-size:12px; color:var(--muted); }
     .signature { text-align:center; font-size:12px; color:#fff; margin-top:6px; }
     .flash { position:fixed; inset:0; background:#fff; z-index:9999; }
   </style>
@@ -90,7 +89,6 @@
         <button id="shoot" disabled>Capture</button>
       </div>
 
-      <div class="note">Images save as JPEG in browser. RAW/flash require a native app.</div>
       <div class="signature">made by diego tafuri for digital photography class :)</div>
     </section>
   </div>
