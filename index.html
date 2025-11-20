@@ -26,7 +26,6 @@
     video {
       width:100vw; height:100%; object-fit:cover; display:block;
     }
-    /* subtle overlay gradient for polish */
     .overlay {
       position:absolute; inset:0; pointer-events:none;
       background:linear-gradient(to top, rgba(0,0,0,.12), rgba(0,0,0,0) 40%);
@@ -63,14 +62,9 @@
       box-shadow:0 8px 24px rgba(224,24,45,.35);
     }
     #shoot[disabled] { opacity:.45; cursor:not-allowed; box-shadow:none; }
-    #flashToggle {
-      background:#1a1a1a; color:#fff; font-size:14px; border:1px solid #333;
-    }
     .note { text-align:center; font-size:12px; color:var(--muted); }
-    /* simulated flash */
-    .flash {
-      position:fixed; inset:0; background:#fff; z-index:9999;
-    }
+    .signature { text-align:center; font-size:12px; color:#fff; margin-top:6px; }
+    .flash { position:fixed; inset:0; background:#fff; z-index:9999; }
   </style>
 </head>
 <body>
@@ -94,16 +88,13 @@
 
       <div class="buttons">
         <button id="shoot" disabled>Capture</button>
-        <button id="flashToggle">Simulated flash: on</button>
       </div>
 
-      <div class="note">
-        Images save as PNG in browser. RAW/flash require a native app.
-      </div>
+      <div class="note">Images save as JPEG in browser. RAW/flash require a native app.</div>
+      <div class="signature">made by diego tafuri for digital photography class :)</div>
     </section>
   </div>
 
-  <!-- hidden analysis canvas -->
   <canvas id="c" width="640" height="480" hidden></canvas>
 
   <script>
@@ -112,26 +103,19 @@
     const ctx = c.getContext('2d', { willReadFrequently: true });
 
     const shoot = document.getElementById('shoot');
-    const flashToggle = document.getElementById('flashToggle');
     const gateText = document.getElementById('gateText');
     const dot = document.getElementById('dot');
     const pctText = document.getElementById('pctText');
 
     // Red gating parameters
     const targetHue = 0;      // red at 0° / 360°
-    const tolerance = 18;     // ± degrees around target hue
+    const tolerance = 10;     // stricter tolerance
     const minPct = 35;        // minimum % of frame that must be "red"
-
-    let useSimFlash = true;
 
     async function start() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: 'environment',
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          },
+          video: { facingMode: 'environment' },
           audio: false
         });
         v.srcObject = stream;
@@ -174,7 +158,6 @@
 
     function analyze(){
       if (v.readyState >= 2){
-        // Draw current frame at analysis resolution
         ctx.drawImage(v, 0, 0, c.width, c.height);
         const data = ctx.getImageData(0, 0, c.width, c.height);
         const pct = percentTargetHue(data);
@@ -188,30 +171,15 @@
       requestAnimationFrame(analyze);
     }
 
-    function simulateFlash(){
-      if (!useSimFlash) return;
-      const f = document.createElement('div');
-      f.className = 'flash';
-      document.body.appendChild(f);
-      setTimeout(() => f.remove(), 90);
-    }
-
     function capture(){
-      // Export the analysis canvas as PNG (browser cannot encode RAW/DNG)
-      simulateFlash();
-      const png = c.toDataURL('image/png');
+      const jpg = c.toDataURL('image/jpeg', 0.95); // save as JPEG
       const a = document.createElement('a');
-      a.href = png;
-      a.download = `red_${Date.now()}.png`;
+      a.href = jpg;
+      a.download = `red_${Date.now()}.jpg`;
       a.click();
     }
 
     shoot.addEventListener('click', capture);
-
-    flashToggle.addEventListener('click', ()=>{
-      useSimFlash = !useSimFlash;
-      flashToggle.textContent = `Simulated flash: ${useSimFlash ? 'on' : 'off'}`;
-    });
 
     start();
   </script>
